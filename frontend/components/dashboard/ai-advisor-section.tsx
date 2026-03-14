@@ -3,22 +3,43 @@
 import { useEffect, useState } from "react";
 import { Brain, Loader2 } from "lucide-react";
 
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000/api";
+
 export function AIAdvisorSection() {
-  const [advice, setAdvice] = useState<string | null>(null);
+  const [advice, setAdvice] = useState<string>("");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("finsight_token");
 
-    fetch("http://localhost:5000/api/ai/advice", {
+    if (!token) {
+      setError("No auth token found");
+      setLoading(false);
+      return;
+    }
+
+    fetch(`${BASE_URL}/ai/advice`, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
     })
-      .then((res) => res.json())
-      .then((data) => setAdvice(data.advice))
-      .catch(() => setAdvice("Failed to load AI advice"))
-      .finally(() => setLoading(false));
+      .then(async (res) => {
+        const data = await res.json();
+
+        if (!res.ok) {
+          throw new Error(data.message || "Failed to load AI advice");
+        }
+
+        setAdvice(data.advice || "No AI advice available");
+      })
+      .catch((err) => {
+        setError(err.message || "Failed to load AI advice");
+      })
+      .finally(() => {
+        setLoading(false);
+      });
   }, []);
 
   return (
@@ -36,8 +57,10 @@ export function AIAdvisorSection() {
             <Loader2 className="w-4 h-4 animate-spin" />
             Analyzing your finances...
           </div>
+        ) : error ? (
+          <p className="text-sm text-destructive">{error}</p>
         ) : (
-          <pre className="text-sm text-foreground whitespace-pre-wrap">
+          <pre className="text-sm text-foreground whitespace-pre-wrap font-sans">
             {advice}
           </pre>
         )}
@@ -45,3 +68,4 @@ export function AIAdvisorSection() {
     </section>
   );
 }
+
