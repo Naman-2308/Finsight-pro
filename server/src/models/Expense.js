@@ -15,14 +15,26 @@ const expenseSchema = new mongoose.Schema(
     amount: {
       type: Number,
       required: true,
+      min: 0,
     },
     category: {
       type: String,
-      enum: ["Food", "Travel", "Shopping", "Bills", "Other"],
-      default: "Other",
+      required: true,
+      enum: [
+        "Food",
+        "Transport",
+        "Shopping",
+        "Bills",
+        "Entertainment",
+        "Health",
+        "Education",
+        "Travel",
+        "Other",
+      ],
     },
     date: {
       type: Date,
+      required: true,
       default: Date.now,
     },
   },
@@ -30,4 +42,3 @@ const expenseSchema = new mongoose.Schema(
 );
 
 module.exports = mongoose.model("Expense", expenseSchema);
-

@@ -223,3 +223,24 @@ export interface AnomaliesResponse {
 export const anomalyApi = {
   get: () => request<AnomaliesResponse>("/anomalies"),
 };
+export interface DemoLoadResponse {
+  message: string;
+  counts: {
+    expenses: number;
+    emis: number;
+    finance: number;
+    investmentProfile: number;
+  };
+}
+
+export const demoApi = {
+  load: () =>
+    request<DemoLoadResponse>("/demo/load", {
+      method: "POST",
+    }),
+
+  clear: () =>
+    request<{ message: string }>("/demo/clear", {
+      method: "DELETE",
+    }),
+};

@@ -17,6 +17,7 @@ import { InvestmentSection } from "@/components/dashboard/investment-section";
 import { AIAdvisorSection } from "@/components/dashboard/ai-advisor-section";
 import { AnomalyAlertsSection } from "@/components/dashboard/anomaly-alerts-section";
 import { BudgetForecast } from "@/components/dashboard/budget-forecast";
+import { DemoDataSection } from "@/components/dashboard/demo-data-section";
 import {
   expenseApi,
   financeApi,
@@ -210,6 +211,7 @@ export default function DashboardPage() {
               <CategoryPieChart data={analytics} loading={loading} />
               <MonthlyTrendChart data={analytics} loading={loading} />
             </div>
+            <DemoDataSection onDataChange={handleRefresh} />
             <BudgetForecast />
             <AIAdvisorSection />
             <AnomalyAlertsSection />
