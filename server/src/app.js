@@ -12,6 +12,7 @@ const investmentRoutes = require("./routes/investmentRoutes");
 const { protect } = require("./middleware/authMiddleware");
 const predictionRoutes = require("./routes/predictionRoutes");
 const aiRoutes = require("./routes/aiRoutes");
+const anomalyRoutes = require("./routes/anomalyRoutes");
 const app = express();
 
 app.use(express.json());
@@ -26,6 +27,7 @@ app.use("/api/insights", insightRoutes);
 app.use("/api/investment", investmentRoutes);
 app.use("/api/prediction", predictionRoutes);
 app.use("/api/ai", aiRoutes);
+app.use("/api/anomalies", anomalyRoutes);
 app.get("/api/test-protected", protect, (req, res) => {
   res.json({
     message: "You accessed protected route",

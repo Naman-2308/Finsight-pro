@@ -208,4 +208,18 @@ export const investmentApi = {
   recommendation: () =>
     request<InvestmentRecommendation>("/investment/recommendation"),
 };
+export interface AnomalyItem {
+  type: "warning" | "info" | "positive";
+  title: string;
+  message: string;
+}
 
+export interface AnomaliesResponse {
+  currentMonthTotal: number;
+  previousMonthTotal: number;
+  anomalies: AnomalyItem[];
+}
+
+export const anomalyApi = {
+  get: () => request<AnomaliesResponse>("/anomalies"),
+};

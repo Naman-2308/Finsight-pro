@@ -15,6 +15,7 @@ import { EMISection } from "@/components/dashboard/emi-section";
 import { InsightsSection } from "@/components/dashboard/insights-section";
 import { InvestmentSection } from "@/components/dashboard/investment-section";
 import { AIAdvisorSection } from "@/components/dashboard/ai-advisor-section";
+import { AnomalyAlertsSection } from "@/components/dashboard/anomaly-alerts-section";
 import { BudgetForecast } from "@/components/dashboard/budget-forecast";
 import {
   expenseApi,
@@ -211,6 +212,7 @@ export default function DashboardPage() {
             </div>
             <BudgetForecast />
             <AIAdvisorSection />
+            <AnomalyAlertsSection />
             <InsightsSection key={`insights-${refreshKey}`} />
             <InvestmentSection key={`investment-${refreshKey}`} />
             <ExpenseSection
