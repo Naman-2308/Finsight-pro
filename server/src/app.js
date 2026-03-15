@@ -13,6 +13,7 @@ const predictionRoutes = require("./routes/predictionRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 const anomalyRoutes = require("./routes/anomalyRoutes");
 const demoRoutes = require("./routes/demoRoutes");
+const receiptRoutes = require("./routes/receiptRoutes");
 const { protect } = require("./middleware/authMiddleware");
 
 const app = express();
@@ -32,6 +33,7 @@ app.use("/api/prediction", predictionRoutes);
 app.use("/api/ai", aiRoutes);
 app.use("/api/anomalies", anomalyRoutes);
 app.use("/api/demo", demoRoutes);
+app.use("/api/receipt", receiptRoutes);
 
 app.get("/api/test-protected", protect, (req, res) => {
   res.json({

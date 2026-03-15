@@ -18,6 +18,7 @@ import { AIAdvisorSection } from "@/components/dashboard/ai-advisor-section";
 import { AnomalyAlertsSection } from "@/components/dashboard/anomaly-alerts-section";
 import { BudgetForecast } from "@/components/dashboard/budget-forecast";
 import { DemoDataSection } from "@/components/dashboard/demo-data-section";
+import { ReceiptScannerSection } from "@/components/dashboard/receipt-scanner-section";
 import {
   expenseApi,
   financeApi,
@@ -212,6 +213,7 @@ export default function DashboardPage() {
               <MonthlyTrendChart data={analytics} loading={loading} />
             </div>
             <DemoDataSection onDataChange={handleRefresh} />
+            <ReceiptScannerSection onDataChange={handleRefresh} />
             <BudgetForecast />
             <AIAdvisorSection />
             <AnomalyAlertsSection />
