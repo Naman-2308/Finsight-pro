@@ -250,12 +250,11 @@ const [demoStatus, setDemoStatus] = useState<DemoStatusResponse | null>(null);
                 loading={loading}
               />
             </div>
-{/* Charts temporarily disabled for mobile crash debugging 
+{/* Charts temporarily disabled for mobile crash debugging */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <CategoryPieChart data={analytics} loading={loading} />
               <MonthlyTrendChart data={analytics} loading={loading} />
             </div>
-            */}
             <ReceiptScannerSection onDataChange={handleRefresh} />
             <BudgetForecast />
             <AIAdvisorSection />

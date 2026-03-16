@@ -11,160 +11,213 @@ import {
   XAxis,
   YAxis,
   CartesianGrid,
-  LineChart,
-  Line,
 } from "recharts";
-import type { ExpenseAnalytics } from "@/lib/api";
+import { PieChart as PieChartIcon, BarChart3 } from "lucide-react";
 
-const COLORS = [
-  "oklch(0.62 0.19 250)",
-  "oklch(0.68 0.17 165)",
-  "oklch(0.74 0.18 85)",
-  "oklch(0.66 0.22 300)",
-  "oklch(0.60 0.22 20)",
-  "oklch(0.72 0.15 195)",
-  "oklch(0.64 0.20 45)",
-];
+interface CategoryBreakdownItem {
+  category: string;
+  total: number;
+  percentage: number;
+}
 
-const tooltipStyle = {
-  backgroundColor: "oklch(0.14 0 0)",
-  border: "1px solid oklch(0.22 0 0)",
-  borderRadius: "8px",
-  color: "oklch(0.94 0 0)",
-  fontSize: "12px",
-};
+interface MonthlyTrendItem {
+  year: number;
+  month: number;
+  label: string;
+  total: number;
+}
 
-interface AnalyticsChartsProps {
+interface ExpenseAnalytics {
+  totalExpense: number;
+  categoryBreakdown: CategoryBreakdownItem[];
+  monthlyTrend: MonthlyTrendItem[];
+}
+
+interface ChartProps {
   data: ExpenseAnalytics | null;
   loading?: boolean;
 }
 
-function LoadingSkeleton() {
+const PIE_COLORS = [
+  "#6366f1",
+  "#06b6d4",
+  "#22c55e",
+  "#f59e0b",
+  "#ef4444",
+  "#8b5cf6",
+  "#14b8a6",
+  "#f97316",
+];
+
+function formatCurrency(value: number) {
+  return `₹${Number(value || 0).toLocaleString("en-IN")}`;
+}
+
+function EmptyState({ text }: { text: string }) {
   return (
-    <div className="animate-pulse h-full bg-muted/30 rounded-lg" />
+    <div className="h-[280px] flex items-center justify-center text-sm text-muted-foreground border border-dashed border-border rounded-xl bg-background/40">
+      {text}
+    </div>
   );
 }
 
-export function CategoryPieChart({ data, loading }: AnalyticsChartsProps) {
+function LoadingState() {
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Category Breakdown</h3>
+    <div className="h-[280px] rounded-xl bg-muted animate-pulse" />
+  );
+}
+
+export function CategoryPieChart({ data, loading }: ChartProps) {
+  const chartData = data?.categoryBreakdown || [];
+
+  return (
+    <section className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <PieChartIcon className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">
+            Category Breakdown
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Spending split by category
+          </p>
+        </div>
+      </div>
+
       {loading ? (
-        <div className="h-56">
-          <LoadingSkeleton />
-        </div>
-      ) : !data || data.categoryBreakdown.length === 0 ? (
-        <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
-          No data available
-        </div>
+        <LoadingState />
+      ) : !chartData.length ? (
+        <EmptyState text="No category data available yet." />
       ) : (
-        <div className="flex flex-col gap-4">
-          <ResponsiveContainer width="100%" height={200}>
-            <PieChart>
-              <Pie
-                data={data.categoryBreakdown}
-                cx="50%"
-                cy="50%"
-                innerRadius={55}
-                outerRadius={85}
-                paddingAngle={3}
-                dataKey="total"
-                nameKey="category"
-              >
-                {data.categoryBreakdown.map((_, index) => (
-                  <Cell key={index} fill={COLORS[index % COLORS.length]} strokeWidth={0} />
-                ))}
-              </Pie>
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, ""]}
-              />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="grid grid-cols-2 gap-2">
-            {data.categoryBreakdown.map((item, index) => (
-              <div key={item.category} className="flex items-center gap-2">
-                <span
-                  className="w-2.5 h-2.5 rounded-full shrink-0"
-                  style={{ backgroundColor: COLORS[index % COLORS.length] }}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4 items-center">
+          <div className="h-[280px] min-w-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={chartData}
+                  dataKey="total"
+                  nameKey="category"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={90}
+                  innerRadius={50}
+                  paddingAngle={3}
+                >
+                  {chartData.map((entry, index) => (
+                    <Cell
+                      key={`cell-${entry.category}-${index}`}
+                      fill={PIE_COLORS[index % PIE_COLORS.length]}
+                    />
+                  ))}
+                </Pie>
+                <Tooltip
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{
+                    borderRadius: 12,
+                    border: "1px solid #e5e7eb",
+                    fontSize: 12,
+                  }}
                 />
-                <span className="text-xs text-muted-foreground truncate">{item.category}</span>
-                <span className="text-xs font-medium text-foreground ml-auto">{item.percentage}%</span>
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="flex flex-col gap-2">
+            {chartData.map((item, index) => (
+              <div
+                key={item.category}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border bg-background px-3 py-2"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span
+                    className="w-3 h-3 rounded-full shrink-0"
+                    style={{ backgroundColor: PIE_COLORS[index % PIE_COLORS.length] }}
+                  />
+                  <span className="text-sm text-foreground truncate">
+                    {item.category}
+                  </span>
+                </div>
+
+                <div className="text-right shrink-0">
+                  <p className="text-sm font-semibold text-foreground">
+                    {formatCurrency(item.total)}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    {item.percentage}%
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
-export function MonthlyTrendChart({ data, loading }: AnalyticsChartsProps) {
+export function MonthlyTrendChart({ data, loading }: ChartProps) {
+  const chartData = data?.monthlyTrend || [];
+
   return (
-    <div className="bg-card border border-border rounded-xl p-5">
-      <h3 className="text-sm font-semibold text-foreground mb-4">Monthly Trend</h3>
+    <section className="bg-card border border-border rounded-2xl p-5 flex flex-col gap-4 shadow-sm">
+      <div className="flex items-center gap-2">
+        <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center">
+          <BarChart3 className="w-4 h-4 text-primary" />
+        </div>
+        <div>
+          <h2 className="text-base font-semibold text-foreground">
+            Monthly Trend
+          </h2>
+          <p className="text-xs text-muted-foreground">
+            Expense progression over time
+          </p>
+        </div>
+      </div>
+
       {loading ? (
-        <div className="h-56">
-          <LoadingSkeleton />
-        </div>
-      ) : !data || data.monthlyTrend.length === 0 ? (
-        <div className="h-56 flex items-center justify-center text-sm text-muted-foreground">
-          No data available
-        </div>
+        <LoadingState />
+      ) : !chartData.length ? (
+        <EmptyState text="No monthly trend data available yet." />
       ) : (
-        <ResponsiveContainer width="100%" height={220}>
-          {data.monthlyTrend.length <= 2 ? (
-            <BarChart data={data.monthlyTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0 0)" />
+        <div className="h-[280px] min-w-0">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart
+              data={chartData}
+              margin={{ top: 10, right: 10, left: 0, bottom: 10 }}
+            >
+              <CartesianGrid strokeDasharray="3 3" vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "oklch(0.55 0 0)", fontSize: 11 }}
+                tick={{ fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "oklch(0.55 0 0)", fontSize: 11 }}
+                tickFormatter={(value) => `₹${value}`}
+                tick={{ fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
+                width={50}
               />
               <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Expenses"]}
+                formatter={(value: number) => formatCurrency(value)}
+                contentStyle={{
+                  borderRadius: 12,
+                  border: "1px solid #e5e7eb",
+                  fontSize: 12,
+                }}
               />
-              <Bar dataKey="total" fill="oklch(0.62 0.19 250)" radius={[4, 4, 0, 0]} />
-            </BarChart>
-          ) : (
-            <LineChart data={data.monthlyTrend} margin={{ top: 4, right: 4, left: -20, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="oklch(0.22 0 0)" />
-              <XAxis
-                dataKey="label"
-                tick={{ fill: "oklch(0.55 0 0)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tick={{ fill: "oklch(0.55 0 0)", fontSize: 11 }}
-                axisLine={false}
-                tickLine={false}
-                tickFormatter={(v) => `₹${(v / 1000).toFixed(0)}k`}
-              />
-              <Tooltip
-                contentStyle={tooltipStyle}
-                formatter={(v: number) => [`₹${v.toLocaleString("en-IN")}`, "Expenses"]}
-              />
-              <Line
-                type="monotone"
+              <Bar
                 dataKey="total"
-                stroke="oklch(0.62 0.19 250)"
-                strokeWidth={2}
-                dot={{ fill: "oklch(0.62 0.19 250)", r: 3 }}
-                activeDot={{ r: 5 }}
+                radius={[10, 10, 0, 0]}
+                fill="#6366f1"
               />
-            </LineChart>
-          )}
-        </ResponsiveContainer>
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       )}
-    </div>
+    </section>
   );
 }
