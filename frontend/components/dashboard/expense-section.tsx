@@ -20,6 +20,9 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [filters, setFilters] = useState<ExpenseFilters>({});
   const [showFilters, setShowFilters] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(10);
+  
+  const ITEMS_PER_PAGE = 10;
 
   const fetchExpenses = useCallback(async () => {
     setLoading(true);
@@ -69,13 +72,17 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
   }
 
   const hasFilters = Object.values(filters).some(Boolean);
+  const visibleExpenses = expenses.slice(0, visibleCount);
+  const hasMoreItems = expenses.length > visibleCount;
 
   return (
     <section id="expenses" className="flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Expenses</h2>
-          <p className="text-xs text-muted-foreground">{expenses.length} records</p>
+          <p className="text-xs text-muted-foreground">
+            {visibleExpenses.length} of {expenses.length} records
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -193,12 +200,12 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
                 </tr>
               </thead>
               <tbody>
-                {expenses.map((expense, idx) => (
+                {visibleExpenses.map((expense, idx) => (
                   <tr
                     key={expense._id}
                     className={cn(
                       "hover:bg-accent/40 transition-colors",
-                      idx !== expenses.length - 1 && "border-b border-border/50"
+                      idx !== visibleExpenses.length - 1 && "border-b border-border/50"
                     )}
                   >
                     <td className="px-5 py-3.5 font-medium text-foreground">{expense.title}</td>
@@ -244,6 +251,18 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
         )}
       </div>
 
+      {/* Show More Button */}
+      {hasMoreItems && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setVisibleCount((prev) => prev + ITEMS_PER_PAGE)}
+            className="px-6 py-2.5 rounded-lg border border-border text-sm font-medium text-foreground hover:bg-accent hover:border-primary transition-all duration-200"
+          >
+            Show More ({expenses.length - visibleCount} remaining)
+          </button>
+        </div>
+      )}
+
       {showModal && (
         <ExpenseModal
           expense={editExpense}
@@ -254,3 +273,4 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
     </section>
   );
 }
+
