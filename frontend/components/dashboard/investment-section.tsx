@@ -83,7 +83,7 @@ export function InvestmentSection() {
   const totalSavings = recommendation?.estimatedSavings ?? 0;
 
   return (
-    <section id="investments" className="flex flex-col gap-4">
+<section id="investments" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <TrendingUp className="w-4 h-4 text-primary" />
         <div>

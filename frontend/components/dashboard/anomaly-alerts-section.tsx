@@ -39,7 +39,7 @@ export function AnomalyAlertsSection() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-4">
+<section id="anomalies" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <TrendingUp className="w-4 h-4 text-primary" />
         <div>

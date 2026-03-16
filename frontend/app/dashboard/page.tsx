@@ -127,7 +127,7 @@ const [demoStatus, setDemoStatus] = useState<DemoStatusResponse | null>(null);
           loading={loading}
         />
 
-        <div className="flex-1 overflow-y-auto">
+<div id="dashboard-scroll-container" className="flex-1 overflow-y-auto">
           <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6 flex flex-col gap-8">
             <div>
               <h1 className="text-xl font-bold text-foreground text-balance">

@@ -113,7 +113,7 @@ export function EMISection({ onDataChange }: EMISectionProps) {
     : null;
 
   return (
-    <section id="emi" className="flex flex-col gap-4">
+<section id="emi" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">

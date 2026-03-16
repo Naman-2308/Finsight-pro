@@ -68,7 +68,7 @@ export function FinanceSection({ onDataChange }: FinanceSectionProps) {
   }
 
   return (
-    <section id="finance" className="flex flex-col gap-4">
+<section id="finance" className="scroll-mt-24 flex flex-col gap-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">
           Finance Overview

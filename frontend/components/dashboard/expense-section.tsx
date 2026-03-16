@@ -92,7 +92,7 @@ export function ExpenseSection({ onDataChange }: ExpenseSectionProps) {
   const canShowLess = expenses.length > 10 && visibleCount > 10;
 
   return (
-    <section id="expenses" className="flex flex-col gap-4">
+<section id="expenses" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-base font-semibold text-foreground">Expenses</h2>

@@ -53,7 +53,7 @@ export function InsightsSection() {
   }, []);
 
   return (
-    <section id="insights" className="flex flex-col gap-4">
+<section id="insights" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <Lightbulb className="w-4 h-4 text-primary" />
         <div>

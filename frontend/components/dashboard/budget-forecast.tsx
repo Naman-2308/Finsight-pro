@@ -56,7 +56,7 @@ export function BudgetForecast() {
 
   if (loading) {
     return (
-      <section className="flex flex-col gap-4">
+<section id="forecast" className="scroll-mt-24 flex flex-col gap-4">
         <div className="flex items-center gap-2">
           <TrendingUp className="w-4 h-4 text-primary" />
           <h2 className="text-base font-semibold text-foreground">
@@ -72,7 +72,7 @@ export function BudgetForecast() {
 
   if (error) {
     return (
-      <section className="flex flex-col gap-4">
+<section id="forecast" className="scroll-mt-24 flex flex-col gap-4">
         <div>
           <h2 className="text-base font-semibold text-foreground">
             Budget Forecast
@@ -98,7 +98,7 @@ export function BudgetForecast() {
     data.daysUntilBudgetExceeded <= 7;
 
   return (
-    <section className="flex flex-col gap-4">
+<section id="forecast" className="scroll-mt-24 flex flex-col gap-4">
       <div>
         <h2 className="text-base font-semibold text-foreground">
           Budget Forecast
