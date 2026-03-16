@@ -9,20 +9,34 @@ const emiSchema = new mongoose.Schema(
     },
     title: {
       type: String,
-      required: true,
+      trim: true,
+    },
+    name: {
+      type: String,
       trim: true,
     },
     monthlyAmount: {
       type: Number,
-      required: true,
+      min: 0,
+    },
+    amount: {
+      type: Number,
+      min: 0,
     },
     remainingMonths: {
       type: Number,
-      required: true,
+      min: 0,
     },
     interestRate: {
       type: Number,
-      default: 0,
+      min: 0,
+    },
+    dueDate: {
+      type: Date,
+    },
+    isDemo: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }

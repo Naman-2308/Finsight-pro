@@ -4,6 +4,7 @@ const {
   scanReceiptFromBuffer,
   normalizeCategory,
 } = require("../services/receiptScannerService");
+const { getFriendlyAIError } = require("../utils/aiErrorHandler");
 
 const upload = multer({
   storage: multer.memoryStorage(),
@@ -31,7 +32,7 @@ const scanReceipt = async (req, res) => {
 
     if (!extracted.bills || extracted.bills.length === 0) {
       return res.status(422).json({
-        message: "No bills could be detected from the uploaded image",
+        message: "No bills could be detected from the uploaded image.",
       });
     }
 
@@ -40,7 +41,14 @@ const scanReceipt = async (req, res) => {
       extracted,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const friendly = getFriendlyAIError(
+      error,
+      "Receipt scan failed. Please upload a clearer image and try again."
+    );
+
+    res.status(friendly.statusCode).json({
+      message: friendly.message,
+    });
   }
 };
 
@@ -114,7 +122,9 @@ const saveScannedReceipt = async (req, res) => {
       expenses: created,
     });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(500).json({
+      message: "Failed to save scanned receipt data.",
+    });
   }
 };
 

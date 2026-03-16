@@ -1,5 +1,5 @@
 "use client";
-
+import { Trash2 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { Sidebar } from "@/components/dashboard/sidebar";
@@ -17,12 +17,13 @@ import { InvestmentSection } from "@/components/dashboard/investment-section";
 import { AIAdvisorSection } from "@/components/dashboard/ai-advisor-section";
 import { AnomalyAlertsSection } from "@/components/dashboard/anomaly-alerts-section";
 import { BudgetForecast } from "@/components/dashboard/budget-forecast";
-import { DemoDataSection } from "@/components/dashboard/demo-data-section";
 import { ReceiptScannerSection } from "@/components/dashboard/receipt-scanner-section";
+import { OnboardingSection } from "@/components/dashboard/onboarding-section";
 import {
   expenseApi,
   financeApi,
   emiApi,
+  demoApi,
   type ExpenseSummary,
   type ExpenseAnalytics,
   type FinanceOverview,
@@ -56,12 +57,13 @@ export default function DashboardPage() {
   const fetchDashboard = useCallback(async () => {
     setLoading(true);
     try {
-      const [sum, an, fin, emi] = await Promise.allSettled([
-        expenseApi.summary(),
-        expenseApi.analytics(),
-        financeApi.overview(),
-        emiApi.overview(),
-      ]);
+      const [sum, an, fin, emi, demo] = await Promise.allSettled([
+  expenseApi.summary(),
+  expenseApi.analytics(),
+  financeApi.overview(),
+  emiApi.overview(),
+  demoApi.status(),
+]);
 
       if (sum.status === "fulfilled") setSummary(sum.value);
       if (an.status === "fulfilled") setAnalytics(an.value);
@@ -70,6 +72,8 @@ export default function DashboardPage() {
 
       if (emi.status === "fulfilled") setEmiOverview(emi.value);
       else setEmiOverview(null);
+      if (demo.status === "fulfilled") setDemoStatus(demo.value);
+else setDemoStatus(null);
     } finally {
       setLoading(false);
     }
@@ -83,14 +87,21 @@ export default function DashboardPage() {
   useEffect(() => {
     handleRefresh();
   }, [handleRefresh]);
-
+async function handleClearDemo() {
+  try {
+    await demoApi.clear();
+    await handleRefresh();
+  } catch {
+    alert("Failed to clear demo data");
+  }
+}
   const riskColor =
     emiOverview?.riskLevel === "High"
       ? "text-destructive"
       : emiOverview?.riskLevel === "Moderate"
       ? "text-warning"
       : "text-success";
-
+const [demoStatus, setDemoStatus] = useState<DemoStatusResponse | null>(null);
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       <div className="hidden lg:flex shrink-0">
@@ -126,7 +137,39 @@ export default function DashboardPage() {
                 Here&apos;s your financial snapshot for today.
               </p>
             </div>
+            {demoStatus?.hasDemoData && (
+  <div className="bg-amber-50 border border-amber-200 text-amber-800 rounded-xl px-4 py-3 flex items-center justify-between">
+    <span className="text-sm">
+      Demo data is currently active. These are sample records for exploring the dashboard.
+    </span>
 
+    <button
+      onClick={handleClearDemo}
+      className="flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg border border-amber-300 hover:bg-amber-100 transition"
+    >
+      <Trash2 className="w-3.5 h-3.5" />
+      Clear Demo Data
+    </button>
+  </div>
+)}
+{demoStatus &&
+  !demoStatus.hasRealData &&
+  !demoStatus.hasDemoData && (
+    <OnboardingSection
+      onAddExpense={() => {
+        const section = document.getElementById("expenses");
+        section?.scrollIntoView({ behavior: "smooth" });
+      }}
+      onSetupFinance={() => {
+        const section = document.getElementById("finance");
+        section?.scrollIntoView({ behavior: "smooth" });
+      }}
+      onLoadDemo={async () => {
+        await demoApi.load();
+        await handleRefresh();
+      }}
+    />
+  )}
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
               <StatCard
                 label="Total Expense"
@@ -212,7 +255,6 @@ export default function DashboardPage() {
               <CategoryPieChart data={analytics} loading={loading} />
               <MonthlyTrendChart data={analytics} loading={loading} />
             </div>
-            <DemoDataSection onDataChange={handleRefresh} />
             <ReceiptScannerSection onDataChange={handleRefresh} />
             <BudgetForecast />
             <AIAdvisorSection />

@@ -3,27 +3,80 @@ const Finance = require("../models/Finance");
 const Emi = require("../models/Emi");
 const InvestmentProfile = require("../models/InvestmentProfile");
 
+async function getUserDataState(userId) {
+  const [expenseCount, emiCount, financeDoc, investmentDoc] = await Promise.all([
+    Expense.countDocuments({ user: userId, isDemo: { $ne: true } }),
+    Emi.countDocuments({ user: userId, isDemo: { $ne: true } }),
+    Finance.findOne({ user: userId, isDemo: { $ne: true } }),
+    InvestmentProfile.findOne({ user: userId, isDemo: { $ne: true } }),
+  ]);
+
+  const [demoExpenseCount, demoEmiCount, demoFinanceDoc, demoInvestmentDoc] =
+    await Promise.all([
+      Expense.countDocuments({ user: userId, isDemo: true }),
+      Emi.countDocuments({ user: userId, isDemo: true }),
+      Finance.findOne({ user: userId, isDemo: true }),
+      InvestmentProfile.findOne({ user: userId, isDemo: true }),
+    ]);
+
+  const hasRealData =
+    expenseCount > 0 || emiCount > 0 || !!financeDoc || !!investmentDoc;
+
+  const hasDemoData =
+    demoExpenseCount > 0 ||
+    demoEmiCount > 0 ||
+    !!demoFinanceDoc ||
+    !!demoInvestmentDoc;
+
+  return {
+    hasRealData,
+    hasDemoData,
+    canLoadDemo: !hasRealData,
+  };
+}
+
+const getDemoStatus = async (req, res) => {
+  try {
+    const userId = req.user._id;
+    const state = await getUserDataState(userId);
+
+    res.status(200).json(state);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 const loadDemoData = async (req, res) => {
   try {
     const userId = req.user._id;
+    const state = await getUserDataState(userId);
 
-    // Clear existing user data first so demo stays predictable
+    if (state.hasRealData) {
+      return res.status(400).json({
+        message:
+          "Demo data can only be loaded for new users with no real data.",
+      });
+    }
+
+    // clear only previous demo data for same user
     await Promise.all([
-      Expense.deleteMany({ user: userId }),
-      Emi.deleteMany({ user: userId }),
-      Finance.deleteMany({ user: userId }),
-      InvestmentProfile.deleteMany({ user: userId }),
+      Expense.deleteMany({ user: userId, isDemo: true }),
+      Emi.deleteMany({ user: userId, isDemo: true }),
+      Finance.deleteMany({ user: userId, isDemo: true }),
+      InvestmentProfile.deleteMany({ user: userId, isDemo: true }),
     ]);
 
     await Finance.create({
       user: userId,
       monthlySalary: 50000,
       monthlyBudget: 30000,
+      isDemo: true,
     });
 
     await InvestmentProfile.create({
       user: userId,
       riskProfile: "Moderate",
+      isDemo: true,
     });
 
     await Emi.insertMany([
@@ -33,6 +86,7 @@ const loadDemoData = async (req, res) => {
         monthlyAmount: 3500,
         remainingMonths: 14,
         interestRate: 11,
+        isDemo: true,
       },
       {
         user: userId,
@@ -40,6 +94,7 @@ const loadDemoData = async (req, res) => {
         monthlyAmount: 2200,
         remainingMonths: 8,
         interestRate: 13,
+        isDemo: true,
       },
     ]);
 
@@ -48,13 +103,13 @@ const loadDemoData = async (req, res) => {
     const currentMonth = now.getMonth();
 
     const demoExpenses = [
-      // Current month
       {
         user: userId,
         title: "Swiggy Order",
         amount: 450,
         category: "Food",
         date: new Date(currentYear, currentMonth, 2),
+        isDemo: true,
       },
       {
         user: userId,
@@ -62,6 +117,7 @@ const loadDemoData = async (req, res) => {
         amount: 280,
         category: "Transport",
         date: new Date(currentYear, currentMonth, 3),
+        isDemo: true,
       },
       {
         user: userId,
@@ -69,6 +125,7 @@ const loadDemoData = async (req, res) => {
         amount: 1800,
         category: "Food",
         date: new Date(currentYear, currentMonth, 5),
+        isDemo: true,
       },
       {
         user: userId,
@@ -76,6 +133,7 @@ const loadDemoData = async (req, res) => {
         amount: 649,
         category: "Entertainment",
         date: new Date(currentYear, currentMonth, 6),
+        isDemo: true,
       },
       {
         user: userId,
@@ -83,6 +141,7 @@ const loadDemoData = async (req, res) => {
         amount: 2100,
         category: "Bills",
         date: new Date(currentYear, currentMonth, 8),
+        isDemo: true,
       },
       {
         user: userId,
@@ -90,6 +149,7 @@ const loadDemoData = async (req, res) => {
         amount: 3200,
         category: "Shopping",
         date: new Date(currentYear, currentMonth, 10),
+        isDemo: true,
       },
       {
         user: userId,
@@ -97,6 +157,7 @@ const loadDemoData = async (req, res) => {
         amount: 1500,
         category: "Transport",
         date: new Date(currentYear, currentMonth, 12),
+        isDemo: true,
       },
       {
         user: userId,
@@ -104,15 +165,15 @@ const loadDemoData = async (req, res) => {
         amount: 1200,
         category: "Food",
         date: new Date(currentYear, currentMonth, 14),
+        isDemo: true,
       },
-
-      // Previous month
       {
         user: userId,
         title: "Zomato Order",
         amount: 300,
         category: "Food",
         date: new Date(currentYear, currentMonth - 1, 4),
+        isDemo: true,
       },
       {
         user: userId,
@@ -120,6 +181,7 @@ const loadDemoData = async (req, res) => {
         amount: 1000,
         category: "Transport",
         date: new Date(currentYear, currentMonth - 1, 7),
+        isDemo: true,
       },
       {
         user: userId,
@@ -127,6 +189,7 @@ const loadDemoData = async (req, res) => {
         amount: 900,
         category: "Entertainment",
         date: new Date(currentYear, currentMonth - 1, 9),
+        isDemo: true,
       },
       {
         user: userId,
@@ -134,6 +197,7 @@ const loadDemoData = async (req, res) => {
         amount: 799,
         category: "Bills",
         date: new Date(currentYear, currentMonth - 1, 11),
+        isDemo: true,
       },
       {
         user: userId,
@@ -141,6 +205,7 @@ const loadDemoData = async (req, res) => {
         amount: 2200,
         category: "Shopping",
         date: new Date(currentYear, currentMonth - 1, 15),
+        isDemo: true,
       },
       {
         user: userId,
@@ -148,6 +213,7 @@ const loadDemoData = async (req, res) => {
         amount: 1400,
         category: "Food",
         date: new Date(currentYear, currentMonth - 1, 18),
+        isDemo: true,
       },
     ];
 
@@ -172,10 +238,10 @@ const clearDemoData = async (req, res) => {
     const userId = req.user._id;
 
     await Promise.all([
-      Expense.deleteMany({ user: userId }),
-      Emi.deleteMany({ user: userId }),
-      Finance.deleteMany({ user: userId }),
-      InvestmentProfile.deleteMany({ user: userId }),
+      Expense.deleteMany({ user: userId, isDemo: true }),
+      Emi.deleteMany({ user: userId, isDemo: true }),
+      Finance.deleteMany({ user: userId, isDemo: true }),
+      InvestmentProfile.deleteMany({ user: userId, isDemo: true }),
     ]);
 
     res.status(200).json({
@@ -187,6 +253,7 @@ const clearDemoData = async (req, res) => {
 };
 
 module.exports = {
+  getDemoStatus,
   loadDemoData,
   clearDemoData,
 };

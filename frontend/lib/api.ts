@@ -223,6 +223,12 @@ export interface AnomaliesResponse {
 export const anomalyApi = {
   get: () => request<AnomaliesResponse>("/anomalies"),
 };
+export interface DemoStatusResponse {
+  hasRealData: boolean;
+  hasDemoData: boolean;
+  canLoadDemo: boolean;
+}
+
 export interface DemoLoadResponse {
   message: string;
   counts: {
@@ -234,11 +240,11 @@ export interface DemoLoadResponse {
 }
 
 export const demoApi = {
+  status: () => request<DemoStatusResponse>("/demo/status"),
   load: () =>
     request<DemoLoadResponse>("/demo/load", {
       method: "POST",
     }),
-
   clear: () =>
     request<{ message: string }>("/demo/clear", {
       method: "DELETE",
