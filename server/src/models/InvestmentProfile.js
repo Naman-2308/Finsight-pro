@@ -10,8 +10,9 @@ const investmentProfileSchema = new mongoose.Schema(
     },
     riskProfile: {
       type: String,
-      enum: ["Conservative", "Moderate", "Aggressive"],
+      enum: ["Low", "Moderate", "High"],
       default: "Moderate",
+      required: true,
     },
     isDemo: {
       type: Boolean,

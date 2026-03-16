@@ -3,18 +3,51 @@ const Finance = require("../models/Finance");
 const Emi = require("../models/Emi");
 const InvestmentProfile = require("../models/InvestmentProfile");
 
+const DEMO_EXPENSE_TITLES = [
+  "Swiggy Order",
+  "Uber Ride",
+  "Groceries",
+  "Netflix Subscription",
+  "Electricity Bill",
+  "Amazon Shopping",
+  "Petrol",
+  "Dining Out",
+  "Zomato Order",
+  "Metro Card Recharge",
+  "Movie Tickets",
+  "Phone Bill",
+  "Clothing Purchase",
+  "Supermarket",
+];
+
+const DEMO_EMI_TITLES = ["Bike EMI", "Laptop EMI"];
+
 async function getUserDataState(userId) {
   const [expenseCount, emiCount, financeDoc, investmentDoc] = await Promise.all([
-    Expense.countDocuments({ user: userId, isDemo: { $ne: true } }),
-    Emi.countDocuments({ user: userId, isDemo: { $ne: true } }),
+    Expense.countDocuments({
+      user: userId,
+      isDemo: { $ne: true },
+      title: { $nin: DEMO_EXPENSE_TITLES },
+    }),
+    Emi.countDocuments({
+      user: userId,
+      isDemo: { $ne: true },
+      title: { $nin: DEMO_EMI_TITLES },
+    }),
     Finance.findOne({ user: userId, isDemo: { $ne: true } }),
     InvestmentProfile.findOne({ user: userId, isDemo: { $ne: true } }),
   ]);
 
   const [demoExpenseCount, demoEmiCount, demoFinanceDoc, demoInvestmentDoc] =
     await Promise.all([
-      Expense.countDocuments({ user: userId, isDemo: true }),
-      Emi.countDocuments({ user: userId, isDemo: true }),
+      Expense.countDocuments({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EXPENSE_TITLES } }],
+      }),
+      Emi.countDocuments({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EMI_TITLES } }],
+      }),
       Finance.findOne({ user: userId, isDemo: true }),
       InvestmentProfile.findOne({ user: userId, isDemo: true }),
     ]);
@@ -53,15 +86,19 @@ const loadDemoData = async (req, res) => {
 
     if (state.hasRealData) {
       return res.status(400).json({
-        message:
-          "Demo data can only be loaded for new users with no real data.",
+        message: "Demo data can only be loaded for new users with no real data.",
       });
     }
 
-    // clear only previous demo data for same user
     await Promise.all([
-      Expense.deleteMany({ user: userId, isDemo: true }),
-      Emi.deleteMany({ user: userId, isDemo: true }),
+      Expense.deleteMany({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EXPENSE_TITLES } }],
+      }),
+      Emi.deleteMany({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EMI_TITLES } }],
+      }),
       Finance.deleteMany({ user: userId, isDemo: true }),
       InvestmentProfile.deleteMany({ user: userId, isDemo: true }),
     ]);
@@ -238,10 +275,22 @@ const clearDemoData = async (req, res) => {
     const userId = req.user._id;
 
     await Promise.all([
-      Expense.deleteMany({ user: userId, isDemo: true }),
-      Emi.deleteMany({ user: userId, isDemo: true }),
-      Finance.deleteMany({ user: userId, isDemo: true }),
-      InvestmentProfile.deleteMany({ user: userId, isDemo: true }),
+      Expense.deleteMany({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EXPENSE_TITLES } }],
+      }),
+      Emi.deleteMany({
+        user: userId,
+        $or: [{ isDemo: true }, { title: { $in: DEMO_EMI_TITLES } }],
+      }),
+      Finance.deleteMany({
+        user: userId,
+        isDemo: true,
+      }),
+      InvestmentProfile.deleteMany({
+        user: userId,
+        isDemo: true,
+      }),
     ]);
 
     res.status(200).json({
