@@ -11,12 +11,16 @@ const financeSchema = new mongoose.Schema(
     monthlySalary: {
       type: Number,
       required: true,
-      default: 0,
+      min: 0,
     },
     monthlyBudget: {
       type: Number,
       required: true,
-      default: 0,
+      min: 0,
+    },
+    isDemo: {
+      type: Boolean,
+      default: false,
     },
   },
   { timestamps: true }
