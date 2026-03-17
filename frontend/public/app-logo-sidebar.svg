@@ -1,0 +1,20 @@
+<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="accentGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" style="stop-color:#4f46e5" />
+      <stop offset="100%" style="stop-color:#06b6d4" />
+    </linearGradient>
+  </defs>
+
+  <!-- Vertical Stem -->
+  <path d="M20 12 L20 52" stroke="#1e1b4b" stroke-width="5" stroke-linecap="round" />
+  
+  <!-- Top Horizontal Stroke -->
+  <path d="M20 14 L44 14" stroke="#1e1b4b" stroke-width="5" stroke-linecap="round" />
+  
+  <!-- Middle Trend Line with Gradient -->
+  <path d="M20 32 L36 32 L44 24" stroke="url(#accentGradient)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" />
+  
+  <!-- Accent Node -->
+  <circle cx="46" cy="22" r="4" fill="#06b6d4" />
+</svg>

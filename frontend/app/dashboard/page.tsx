@@ -19,6 +19,7 @@ import { AnomalyAlertsSection } from "@/components/dashboard/anomaly-alerts-sect
 import { BudgetForecast } from "@/components/dashboard/budget-forecast";
 import { ReceiptScannerSection } from "@/components/dashboard/receipt-scanner-section";
 import { OnboardingSection } from "@/components/dashboard/onboarding-section";
+import { CopilotWidget } from "@/components/dashboard/copilot-widget";
 import {
   expenseApi,
   financeApi,
@@ -272,6 +273,7 @@ const [demoStatus, setDemoStatus] = useState<DemoStatusResponse | null>(null);
             <EMISection key={`emi-${refreshKey}`} onDataChange={handleRefresh} />
           </div>
         </div>
+        <CopilotWidget />
       </main>
     </div>
   );

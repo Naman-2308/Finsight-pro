@@ -250,3 +250,14 @@ export const demoApi = {
       method: "DELETE",
     }),
 };
+export interface CopilotChatResponse {
+  reply: string;
+}
+
+export const copilotApi = {
+  chat: (message: string) =>
+    request<CopilotChatResponse>("/copilot/chat", {
+      method: "POST",
+      body: JSON.stringify({ message }),
+    }),
+};
