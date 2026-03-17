@@ -65,15 +65,6 @@ Finsight Pro is a full-stack personal finance web application that helps users t
 
 ## 📸 Screenshots
 
-> *(Add screenshots here before making public for better impact)*
-
-- Dashboard Overview  
-- Expense Analytics  
-- AI Advisor  
-- Copilot Chat  
-- Mobile View  
-
----
 
 ## ⚙️ Setup Instructions
 
