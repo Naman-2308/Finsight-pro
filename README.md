@@ -65,6 +65,7 @@ Finsight Pro is a full-stack personal finance web application that helps users t
 
 ## 📸 Screenshots
 <img width="1854" height="1168" alt="Screenshot from 2026-03-17 16-47-56" src="https://github.com/user-attachments/assets/2d65e23d-b621-4d9e-bab8-5578a26c624b" />
+<img width="1854" height="1168" alt="Screenshot from 2026-03-17 16-48-22" src="https://github.com/user-attachments/assets/a4e62ca5-93d1-4870-8af1-57fa501fc628" />
 
 
 ## ⚙️ Setup Instructions
