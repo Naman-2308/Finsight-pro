@@ -43,7 +43,7 @@ export function AIAdvisorSection() {
   }, []);
 
   return (
-    <section className="flex flex-col gap-4">
+<section id="ai-advisor" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <Brain className="w-4 h-4 text-primary" />
         <h2 className="text-base font-semibold text-foreground">
