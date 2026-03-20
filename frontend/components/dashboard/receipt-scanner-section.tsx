@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Camera,
   Loader2,
@@ -49,7 +49,36 @@ export function ReceiptScannerSection({
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
 
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  function resetScannerState() {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
+    setBills([]);
+    setFile(null);
+    setPreviewUrl("");
+    setMode("billTotals");
+
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  }
+
   function handleFileChange(selected: File | null) {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+    }
+
     setFile(selected);
     setBills([]);
     setMessage("");
@@ -60,6 +89,10 @@ export function ReceiptScannerSection({
       setPreviewUrl(url);
     } else {
       setPreviewUrl("");
+    }
+
+    if (!selected && fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   }
 
@@ -100,6 +133,8 @@ export function ReceiptScannerSection({
         mode,
         bills,
       });
+
+      resetScannerState();
 
       setMessage(
         `${res.message} (${res.createdCount} expense${
@@ -155,7 +190,7 @@ export function ReceiptScannerSection({
   }
 
   return (
-<section id="receipt-scanner" className="scroll-mt-24 flex flex-col gap-4">
+    <section id="receipt-scanner" className="scroll-mt-24 flex flex-col gap-4">
       <div className="flex items-center gap-2">
         <ScanLine className="w-4 h-4 text-primary" />
         <div>
@@ -163,7 +198,8 @@ export function ReceiptScannerSection({
             Receipt Scanner
           </h2>
           <p className="text-xs text-muted-foreground">
-            Scan one or multiple bills in a single image and save totals or line items
+            Scan one or multiple bills in a single image and save totals or line
+            items
           </p>
         </div>
       </div>
@@ -176,6 +212,7 @@ export function ReceiptScannerSection({
                 <Camera className="w-4 h-4" />
                 Choose Receipt Image
                 <input
+                  ref={fileInputRef}
                   type="file"
                   accept="image/*"
                   className="hidden"

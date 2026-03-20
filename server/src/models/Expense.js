@@ -28,6 +28,7 @@ const expenseSchema = new mongoose.Schema(
         "Entertainment",
         "Health",
         "Education",
+        "Utilities",
         "Travel",
         "Other",
       ],
