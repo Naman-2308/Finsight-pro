@@ -1,3 +1,5 @@
+require("express-async-errors");
+
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
@@ -14,14 +16,34 @@ const aiRoutes = require("./routes/aiRoutes");
 const anomalyRoutes = require("./routes/anomalyRoutes");
 const demoRoutes = require("./routes/demoRoutes");
 const receiptRoutes = require("./routes/receiptRoutes");
-const { protect } = require("./middleware/authMiddleware");
 const copilotRoutes = require("./routes/copilotRoutes");
+const { protect } = require("./middleware/authMiddleware");
+
 const app = express();
 
-app.use(express.json());
-app.use(cors());
-app.use(helmet());
+app.use(
+  cors({
+    origin: true,
+    credentials: false,
+  })
+);
+
+app.use(
+  helmet({
+    crossOriginResourcePolicy: false,
+  })
+);
+
 app.use(morgan("dev"));
+app.use(express.json({ limit: "2mb" }));
+app.use(express.urlencoded({ extended: true, limit: "2mb" }));
+
+app.get("/api/v1/health", (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Finsight Pro API running",
+  });
+});
 
 app.use("/api/auth", authRoutes);
 app.use("/api/expenses", expenseRoutes);
@@ -35,15 +57,34 @@ app.use("/api/anomalies", anomalyRoutes);
 app.use("/api/demo", demoRoutes);
 app.use("/api/receipt", receiptRoutes);
 app.use("/api/copilot", copilotRoutes);
+
 app.get("/api/test-protected", protect, (req, res) => {
-  res.json({
+  res.status(200).json({
     message: "You accessed protected route",
     user: req.user,
   });
 });
 
-app.get("/api/v1/health", (req, res) => {
-  res.json({ success: true, message: "Finsight Pro API running" });
+// 404 handler
+app.use((req, res) => {
+  res.status(404).json({
+    message: `Route not found: ${req.method} ${req.originalUrl}`,
+  });
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error("GLOBAL ERROR:", err);
+
+  if (res.headersSent) {
+    return next(err);
+  }
+
+  const statusCode = err.statusCode || 500;
+
+  res.status(statusCode).json({
+    message: err.message || "Something went wrong",
+  });
 });
 
 module.exports = app;

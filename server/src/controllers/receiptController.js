@@ -4,8 +4,8 @@ const {
   scanReceiptFromBuffer,
   normalizeCategory,
 } = require("../services/receiptScannerService");
-const { getFriendlyAIError } = require("../utils/aiErrorHandler");
 
+// ---------------- MULTER CONFIG ----------------
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
@@ -19,39 +19,69 @@ const upload = multer({
   },
 });
 
+// ---------------- SIMPLE RATE LIMIT ----------------
+const scanRateLimit = new Map();
+const RATE_LIMIT_WINDOW = 15 * 1000;
+
+function isRateLimited(userId) {
+  const last = scanRateLimit.get(userId);
+  if (!last) return false;
+  return Date.now() - last < RATE_LIMIT_WINDOW;
+}
+
+function updateRateLimit(userId) {
+  scanRateLimit.set(userId, Date.now());
+}
+
+// ---------------- SCAN RECEIPT ----------------
 const scanReceipt = async (req, res) => {
   try {
     if (!req.file) {
       return res.status(400).json({ message: "Receipt image is required" });
     }
 
+    const userId = String(req.user?._id || "guest");
+
+    if (isRateLimited(userId)) {
+      return res.status(429).json({
+        message: "Please wait a few seconds before scanning again.",
+      });
+    }
+
+    updateRateLimit(userId);
+
     const extracted = await scanReceiptFromBuffer(
       req.file.buffer,
       req.file.mimetype
     );
 
-    if (!extracted.bills || extracted.bills.length === 0) {
+    if (!extracted?.bills || extracted.bills.length === 0) {
       return res.status(422).json({
-        message: "No bills could be detected from the uploaded image.",
+        message: "No bills detected. Try a clearer image.",
+        extracted: { bills: [] },
       });
     }
 
-    res.status(200).json({
+    return res.status(200).json({
       message: "Receipt scanned successfully",
       extracted,
     });
   } catch (error) {
-    const friendly = getFriendlyAIError(
-      error,
-      "Receipt scan failed. Please upload a clearer image and try again."
-    );
+    console.error("Scan controller error:", error);
 
-    res.status(friendly.statusCode).json({
-      message: friendly.message,
+    if (error?.statusCode && error?.message) {
+      return res.status(error.statusCode).json({
+        message: error.message,
+      });
+    }
+
+    return res.status(500).json({
+      message: "Receipt scanning failed. Please try again.",
     });
   }
 };
 
+// ---------------- SAVE RECEIPT ----------------
 const saveScannedReceipt = async (req, res) => {
   try {
     const userId = req.user._id;
@@ -73,7 +103,7 @@ const saveScannedReceipt = async (req, res) => {
 
     for (const bill of bills) {
       const billTitle = bill.title || "Scanned Bill";
-      const billDate = bill.date || new Date().toISOString().slice(0, 10);
+      const billDate = bill.date || new Date();
       const billCategory = normalizeCategory(bill.category);
       const billTotalAmount = Number(bill.totalAmount || 0);
 
@@ -115,14 +145,16 @@ const saveScannedReceipt = async (req, res) => {
 
     const created = await Expense.insertMany(expensesToCreate);
 
-    res.status(201).json({
+    return res.status(201).json({
       message: "Scanned receipt data saved successfully",
       mode,
       createdCount: created.length,
       expenses: created,
     });
   } catch (error) {
-    res.status(500).json({
+    console.error("Save receipt error:", error);
+
+    return res.status(500).json({
       message: "Failed to save scanned receipt data.",
     });
   }

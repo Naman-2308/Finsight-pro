@@ -1,3 +1,4 @@
+const sharp = require("sharp");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -96,22 +97,206 @@ function extractJson(text) {
   throw new Error("No JSON found in AI response");
 }
 
-async function scanReceiptFromBuffer(buffer, mimeType) {
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
+function extractAmount(text) {
+  const matches = text.match(/(\d+(?:\.\d{1,2})?)/g);
+  if (!matches) return 0;
+  return Math.max(...matches.map(Number));
+}
+
+function detectCategory(text) {
+  const t = String(text || "").toLowerCase();
+
+  if (
+    t.includes("restaurant") ||
+    t.includes("food") ||
+    t.includes("cafe") ||
+    t.includes("dining")
+  ) {
+    return "Food";
+  }
+
+  if (
+    t.includes("uber") ||
+    t.includes("ola") ||
+    t.includes("petrol") ||
+    t.includes("fuel") ||
+    t.includes("metro") ||
+    t.includes("taxi")
+  ) {
+    return "Transport";
+  }
+
+  if (
+    t.includes("mall") ||
+    t.includes("shopping") ||
+    t.includes("retail") ||
+    t.includes("fashion")
+  ) {
+    return "Shopping";
+  }
+
+  if (
+    t.includes("electricity") ||
+    t.includes("water") ||
+    t.includes("internet") ||
+    t.includes("phone")
+  ) {
+    return "Bills";
+  }
+
+  return "Other";
+}
+
+async function normalizeImageBuffer(buffer) {
+  try {
+    return await sharp(buffer)
+      .rotate()
+      .grayscale()
+      .normalize()
+      .png()
+      .toBuffer();
+  } catch (error) {
+    throw {
+      statusCode: 422,
+      message:
+        "Uploaded image could not be processed. Please use a clearer JPG or PNG receipt image.",
+    };
+  }
+}
+
+async function runOCR(buffer) {
+  const Tesseract = require("tesseract.js");
+
+  const cleanBuffer = await normalizeImageBuffer(buffer);
+
+  const result = await withTimeout(
+    Tesseract.recognize(cleanBuffer, "eng"),
+    25000,
+    "OCR timeout"
+  );
+
+  return result?.data?.text || "";
+}
+
+function normalizeBills(parsed) {
+  const bills = Array.isArray(parsed?.bills) ? parsed.bills : [];
+
+  return bills.map((bill, billIndex) => ({
+    merchant: bill?.merchant || "Unknown Merchant",
+    title: bill?.title || `Scanned Bill ${billIndex + 1}`,
+    totalAmount: safeNumber(bill?.totalAmount, 0),
+    category: normalizeCategory(bill?.category),
+    date: bill?.date || new Date().toISOString().slice(0, 10),
+    notes: bill?.notes || "",
+    items: Array.isArray(bill?.items)
+      ? bill.items.map((item, itemIndex) => ({
+          name: item?.name || `Item ${itemIndex + 1}`,
+          amount: safeNumber(item?.amount, 0),
+          category: normalizeCategory(item?.category || bill?.category),
+        }))
+      : [],
+  }));
+}
+
+function getReceiptSignals(rawText) {
+  const text = String(rawText || "").toLowerCase();
+
+  const keywordSignals = [
+    "total",
+    "subtotal",
+    "tax",
+    "discount",
+    "invoice",
+    "receipt",
+    "cash",
+    "card",
+    "amount",
+    "qty",
+    "item",
+    "balance",
+    "gst",
+    "vat",
+    "bill",
+    "change",
+  ];
+
+  const currencySignals = [
+    "₹",
+    "rs",
+    "inr",
+    "$",
+    "usd",
+    "eur",
+    "aed",
+    "£",
+  ];
+
+  const lines = text
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+
+  const keywordCount = keywordSignals.filter((k) => text.includes(k)).length;
+  const currencyCount = currencySignals.filter((k) => text.includes(k)).length;
+
+  const itemPriceLineCount = lines.filter((line) => {
+    const hasWord = /[a-zA-Z]{2,}/.test(line);
+    const hasPrice = /\d+(?:\.\d{1,2})/.test(line);
+    return hasWord && hasPrice;
+  }).length;
+
+  const totalLikeLineCount = lines.filter((line) => {
+    return /(total|subtotal|grand total|amount|net amount|balance)/i.test(line);
+  }).length;
+
+  return {
+    keywordCount,
+    currencyCount,
+    itemPriceLineCount,
+    totalLikeLineCount,
+    lineCount: lines.length,
+  };
+}
+
+function looksLikeReceipt(rawText) {
+  const signals = getReceiptSignals(rawText);
+
+  let score = 0;
+
+  if (signals.keywordCount >= 2) score += 2;
+  if (signals.currencyCount >= 1) score += 2;
+  if (signals.itemPriceLineCount >= 2) score += 3;
+  if (signals.totalLikeLineCount >= 1) score += 3;
+  if (signals.lineCount >= 4) score += 1;
+
+  return score >= 5;
+}
+
+async function refineWithAI(rawText) {
   const model = genAI.getGenerativeModel({
-    model: "gemini-3-flash-preview",
+    model: "gemini-3.1-flash-lite-preview",
   });
 
   const prompt = `
 You are a professional receipt parser.
 
-The uploaded image may contain:
-- one receipt
-- multiple receipts/bills in a single image
-- visible line items inside each receipt
+First determine whether the OCR text below is actually from a shopping/payment receipt or bill.
 
-Return ONLY valid JSON in this exact structure:
+If it is NOT a receipt, return exactly:
+{"isReceipt":false,"bills":[]}
 
+If it IS a receipt, return JSON in this exact structure:
 {
+  "isReceipt": true,
   "bills": [
     {
       "merchant": "string",
@@ -132,57 +317,163 @@ Return ONLY valid JSON in this exact structure:
 }
 
 Rules:
-- Detect ALL separate bills in the image
-- Each bill must appear as one object in "bills"
-- "title" should be a short user-friendly title for the entire bill
-- "totalAmount" must be the final paid amount for that bill
-- "category" must be one of the allowed values exactly
-- "date" should be receipt date if visible, otherwise today's date
-- "notes" can include useful context like invoice number, tax, payment mode
-- "items" should contain individual bill items if readable
-- If items are not readable, return an empty array
-- If merchant is unclear, use "Unknown Merchant"
-- If title is unclear, infer something sensible like "Restaurant Bill", "Shopping Bill", "Salon Bill"
-- For haircut / salon / grooming, category should usually be "Other" unless something else is clearly better
-- Return JSON only, no explanation
+- Return JSON only
+- If not clearly a receipt, set isReceipt=false
+- Do not guess totals for non-receipt text
+- Do not invent bills if the text is not receipt-like
+
+OCR text:
+${rawText}
 `;
 
-  const result = await model.generateContent([
-    prompt,
-    {
-      inlineData: {
-        mimeType,
-        data: buffer.toString("base64"),
-      },
-    },
-  ]);
+  const result = await withTimeout(
+    model.generateContent(prompt),
+    12000,
+    "AI refinement timeout"
+  );
 
   const text = result.response.text();
   const parsed = JSON.parse(extractJson(text));
 
-  const bills = Array.isArray(parsed.bills) ? parsed.bills : [];
-
-  const normalizedBills = bills.map((bill, billIndex) => ({
-    merchant: bill?.merchant || "Unknown Merchant",
-    title:
-      bill?.title || `Scanned Bill ${billIndex + 1}`,
-    totalAmount: safeNumber(bill?.totalAmount, 0),
-    category: normalizeCategory(bill?.category),
-    date: bill?.date || new Date().toISOString().slice(0, 10),
-    notes: bill?.notes || "",
-    items: Array.isArray(bill?.items)
-      ? bill.items.map((item, itemIndex) => ({
-          name: item?.name || `Item ${itemIndex + 1}`,
-          amount: safeNumber(item?.amount, 0),
-          category: normalizeCategory(item?.category || bill?.category),
-        }))
-      : [],
-  }));
-
   return {
-    bills: normalizedBills,
+    isReceipt: Boolean(parsed?.isReceipt),
+    bills: normalizeBills(parsed),
     raw: text,
   };
+}
+
+async function scanReceiptFromBuffer(buffer, mimeType) {
+  let rawText = "";
+
+  try {
+    rawText = await runOCR(buffer);
+
+    if (!rawText || rawText.trim().length < 8) {
+      throw {
+        statusCode: 422,
+        message:
+          "Could not read the image clearly. Please upload a proper receipt image.",
+      };
+    }
+
+    const heuristicReceipt = looksLikeReceipt(rawText);
+
+    try {
+      const aiResult = await refineWithAI(rawText);
+
+      if (aiResult?.isReceipt && aiResult?.bills?.length) {
+        return aiResult;
+      }
+
+      if (!aiResult?.isReceipt) {
+        throw {
+          statusCode: 422,
+          message: "Please upload a correct receipt image.",
+        };
+      }
+    } catch (aiError) {
+      console.error(
+        "AI refinement failed, checking OCR fallback:",
+        aiError?.message || aiError
+      );
+
+      if (aiError?.statusCode) {
+        throw aiError;
+      }
+    }
+
+    if (!heuristicReceipt) {
+      throw {
+        statusCode: 422,
+        message: "Please upload a correct receipt image.",
+      };
+    }
+
+    const fallbackAmount = extractAmount(rawText);
+
+    if (!fallbackAmount || fallbackAmount <= 0) {
+      throw {
+        statusCode: 422,
+        message: "Please upload a correct receipt image.",
+      };
+    }
+
+    return {
+      bills: [
+        {
+          merchant: "Unknown Merchant",
+          title: "Scanned Receipt",
+          totalAmount: fallbackAmount,
+          category: detectCategory(rawText),
+          date: new Date().toISOString().slice(0, 10),
+          notes: rawText.slice(0, 300),
+          items: [],
+        },
+      ],
+      raw: rawText,
+    };
+  } catch (error) {
+    const message = String(error?.message || "");
+    console.error("Receipt scanner service error:", message);
+
+    if (error?.statusCode && error?.message) {
+      throw error;
+    }
+
+    if (
+      error?.status === 429 ||
+      message.includes("429") ||
+      message.toLowerCase().includes("too many requests") ||
+      message.toLowerCase().includes("rate limit") ||
+      message.toLowerCase().includes("resource_exhausted")
+    ) {
+      throw {
+        statusCode: 429,
+        message:
+          "Receipt scanning is temporarily busy. Please wait a few seconds and try again.",
+      };
+    }
+
+    if (message.toLowerCase().includes("ocr timeout")) {
+      throw {
+        statusCode: 408,
+        message:
+          "Receipt OCR took too long. Please try a smaller or clearer image.",
+      };
+    }
+
+    if (message.toLowerCase().includes("attempting to read image")) {
+      throw {
+        statusCode: 422,
+        message:
+          "This image format could not be read properly. Please upload a normal JPG or PNG receipt image.",
+      };
+    }
+
+    if (message.toLowerCase().includes("timeout")) {
+      throw {
+        statusCode: 408,
+        message:
+          "Receipt scan took too long. Please try a clearer image and retry.",
+      };
+    }
+
+    if (
+      message.toLowerCase().includes("json") ||
+      message.toLowerCase().includes("no json found")
+    ) {
+      throw {
+        statusCode: 422,
+        message: "Please upload a correct receipt image.",
+      };
+    }
+
+    throw {
+      statusCode: 500,
+      message:
+        "Receipt scanning failed due to a processing issue. Please try again.",
+    };
+  }
 }
 
 module.exports = {
